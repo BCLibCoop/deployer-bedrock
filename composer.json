@@ -1,0 +1,27 @@
+{
+  "name": "bclibcoop/deployer-bedrock",
+  "description": "Deployer recipe/tasks to deploy a Bedrock-based WordPress site",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Sam Edwards",
+      "email": "sam.edwards@bc.libraries.coop"
+    }
+  ],
+  "keywords": [
+    "deployer",
+    "deployer-recpie"
+  ],
+  "homepage": "https://bc.libraries.coop/",
+  "autoload": {
+    "files": [
+      "autoload.php"
+    ]
+  },
+  "require": {
+    "php": ">=7.4"
+  },
+  "require-dev": {
+    "deployer/deployer": "^7.1"
+  }
+}

@@ -40,11 +40,12 @@ task('db:push', function () {
     }
 
     upload("$result_file", "{{deploy_path}}/$result_file");
-    runLocally("rm $result_file");
 
     if (!test("[ -f {{deploy_path}}/$result_file ]") || !test("[ -s {{deploy_path}}/$result_file ]")) {
         throw new Exception('Database Export Copy Failed');
     }
+
+    runLocally("rm $result_file");
 
     within('{{release_or_current_path}}', function () use ($result_file) {
         writeln("Importing database");
@@ -100,12 +101,13 @@ task('db:pull', function () {
         }
 
         download("$remote_result_file", "$result_file");
+
+        if (!testLocally("[ -f $result_file ]") || !testLocally("[ -s $result_file ]")) {
+            throw new Exception('Database Export Copy Failed');
+        }
+
         run("rm $remote_result_file");
     });
-
-    if (!test("[ -f $result_file ]") || !test("[ -s $result_file ]")) {
-        throw new Exception('Database Export Copy Failed');
-    }
 
     writeln("Importing database");
     runLocally("gunzip -c $result_file | {{bin/wp}} db import -");

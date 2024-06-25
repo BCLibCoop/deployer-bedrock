@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Bedrock Deployer Recpie
+ * Drupal Deployer Recpie
  *
  * @author            Sam Edwards <sam.edwards@bc.libraries.coop>
  * @copyright         2024 BC Libraries Cooperative
@@ -18,37 +18,33 @@ require_once __DIR__ . '/bclc-base.php';
 /**
  * Require tasks
  */
-require_once __DIR__ . '/tasks/db-wordpress.php';
-require_once __DIR__ . '/tasks/wp-cli.php';
+require_once __DIR__ . '/tasks/db-drupal.php';
+require_once __DIR__ . '/tasks/drush.php';
 
-add('recipes', ['bedrock']);
+add('recipes', ['drupal']);
 
 /**
- * WordPress content directory, defaults to `app` for Bedrock
+ * Default drupal site, for syncing content
  */
-set('wp_content_dir', 'app');
+set('drupal_site', 'default');
 
 /**
  * Shared files/dirs between deploys
  */
 set('shared_files', [
     '.env',
-    'web/.htaccess',
     'web/.user.ini',
-    'config/application.local.php',
 ]);
 set('shared_dirs', [
     'config/backup',
-    'web/{{wp_content_dir}}/uploads',
-    'web/{{wp_content_dir}}/fonts',
+    'web/sites/{{drupal_site}}/files',
 ]);
 
 /**
  * Writable dirs by web server
  */
 set('writable_dirs', [
-    'web/{{wp_content_dir}}/uploads',
-    'web/{{wp_content_dir}}/fonts',
+    'web/sites/{{drupal_site}}/files',
 ]);
 
 /**
@@ -56,5 +52,5 @@ set('writable_dirs', [
  * directories should have a trailing slash to sync the whole dir
  */
 set('sync_dirs', [
-    'web/{{wp_content_dir}}/uploads/',
+    'web/sites/{{drupal_site}}/files/',
 ]);

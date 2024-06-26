@@ -38,7 +38,7 @@ task('db:push', function () {
 
     $hash        = substr(md5(mt_rand()), 0, 7);
     set('result_file', sprintf('{{application}}-{{environment}}-%s-%s.sql.gz', date('Y-m-d\TH-i-s'), $hash));
-    set('remote_result_file', '{{deploy_path}}/{{result_file}}');
+    set('remote_result_file', '{{backup_path}}/{{result_file}}');
 
     writeln('✈︎ Pushing local database to <fg=cyan>{{hostname}}</fg=cyan>');
 
@@ -47,6 +47,11 @@ task('db:push', function () {
     if (!testLocally('[ -s {{result_file}} ]')) {
         throw new Exception('Database Export Failed');
     }
+
+    /**
+     * Ensure backup directory exists
+     */
+    run('[ -d {{backup_path}} ] || mkdir {{backup_path}}');
 
     upload('{{result_file}}', '{{remote_result_file}}');
 

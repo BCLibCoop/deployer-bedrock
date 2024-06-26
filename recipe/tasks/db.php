@@ -56,7 +56,7 @@ task('db:push', function () {
     upload('{{result_file}}', '{{remote_result_file}}');
 
     if (!test('[ -s {{remote_result_file}} ]')) {
-        throw new Exception('Database Export Copy Failed');
+        throw new Exception('Database Export Upload Failed');
     }
 
     runLocally('rm {{result_file}}');
@@ -68,34 +68,34 @@ task('db:push', function () {
 
     writeln('Importing database');
 
-    within('{{current_path}}', function () {
-        run('gunzip -c {{remote_result_file}} | {{db_import_command}}');
-        run('rm {{remote_result_file}}');
+    cd('{{current_path}}');
 
-        /**
-         * Gating this to the specific recipe as it sets the variables we need
-         */
-        if (in_array('bedrock-multisite', get('recipes'))) {
-            writeLn('Replacing base URLs in multi-site database');
+    run('gunzip -c {{remote_result_file}} | {{db_import_command}}');
+    run('rm {{remote_result_file}}');
 
-            run("{{bin/wp}} search-replace 'https?://([\w\.]*\.){{local_base_url}}' 'http://$1{{base_url}}' 'wp_*options' "
-                . "--url={{local_url}} --network  --skip-plugins --skip-themes --regex --regex-delimiter='%'");
-            run("{{bin/wp}} search-replace '{{local_base_url}}' '{{base_url}}' wp_blogs wp_site "
-                . "--url={{local_url}} --network --skip-plugins --skip-themes");
+    /**
+     * Gating this to the specific recipe as it sets the variables we need
+     */
+    if (in_array('bedrock-multisite', get('recipes'))) {
+        writeLn('Replacing base URLs in multi-site database');
 
-            if (input()->getOption('full-replace')) {
-                // TODO: Get all blog URLs and loop through to change URLs? Probably faster than a regex.
-                // TODO: Be more surgical about tables/columns to look at to speed up?
-                info('--full-replace not fully implemented. Main URL will be changed, but not sub-sites.');
-                run("{{bin/wp}} search-replace 'http://{{local_url}}' 'http://{{url}}' --url={{local_url}} --network {{wp_replace_options}}");
-            }
-        } elseif (in_array('bedrock', get('recipes'))) {
-            writeLn('Replacing URLs in database');
+        run("{{bin/wp}} search-replace 'https?://([\w\.]*\.){{local_base_url}}' 'http://$1{{base_url}}' 'wp_*options' "
+            . "--url={{local_url}} --network  --skip-plugins --skip-themes --regex --regex-delimiter='%'");
+        run("{{bin/wp}} search-replace '{{local_base_url}}' '{{base_url}}' wp_blogs wp_site "
+            . "--url={{local_url}} --network --skip-plugins --skip-themes");
 
-            // Assume https for prod
-            run("{{bin/wp}} search-replace 'http://{{local_url}}' 'https://{{url}}' {{wp_replace_options}}");
+        if (input()->getOption('full-replace')) {
+            // TODO: Get all blog URLs and loop through to change URLs? Probably faster than a regex.
+            // TODO: Be more surgical about tables/columns to look at to speed up?
+            info('--full-replace not fully implemented. Main URL will be changed, but not sub-sites.');
+            run("{{bin/wp}} search-replace 'http://{{local_url}}' 'http://{{url}}' --url={{local_url}} --network {{wp_replace_options}}");
         }
-    });
+    } elseif (in_array('bedrock', get('recipes'))) {
+        writeLn('Replacing URLs in database');
+
+        // Assume https for prod
+        run("{{bin/wp}} search-replace 'http://{{local_url}}' 'https://{{url}}' {{wp_replace_options}}");
+    }
 })
     ->desc('Pushes the database from local to remote env, replacing URLs as appropriate');
 
@@ -116,26 +116,26 @@ task('db:pull', function () {
 
     writeln('✈︎ Pulling database from <fg=cyan>{{hostname}}</fg=cyan>');
 
+    cd('{{current_path}}');
+
     /**
      * Ensure backup directory exists
      */
     run('[ -d {{backup_path}} ] || mkdir {{backup_path}}');
 
-    within('{{release_or_current_path}}', function () {
-        run('{{db_export_command}} | gzip > {{remote_result_file}}');
+    run('{{db_export_command}} | gzip > {{remote_result_file}}');
 
-        if (!test('[ -s {{remote_result_file}} ]')) {
-            throw new Exception('Database Export Failed');
-        }
+    if (!test('[ -s {{remote_result_file}} ]')) {
+        throw new Exception('Database Export Failed');
+    }
 
-        download('{{remote_result_file}}', '{{result_file}}');
+    download('{{remote_result_file}}', '{{result_file}}');
 
-        if (!testLocally('[ -s {{result_file}} ]')) {
-            throw new Exception('Database Export Copy Failed');
-        }
+    if (!testLocally('[ -s {{result_file}} ]')) {
+        throw new Exception('Database Export Download Failed');
+    }
 
-        run('rm {{remote_result_file}}');
-    });
+    run('rm {{remote_result_file}}');
 
     if (input()->getOption('skip-import')) {
         writeln('Skipping import, file is located at {{result_file}}');
@@ -183,6 +183,8 @@ task('db:backup', function () {
         return;
     }
 
+    cd('{{current_path}}');
+
     /**
      * Ensure backup directory exists
      */
@@ -191,6 +193,7 @@ task('db:backup', function () {
     $url = '';
     if (in_array('bedrock', get('recipes'))) {
         $url = input()->getOption('url');
+
         if (!empty($url)) {
             set('single_url', $url);
         }
@@ -206,24 +209,22 @@ task('db:backup', function () {
         )
     );
 
-    within('{{current_path}}', function () {
-        if (has('single_url')) {
-            try {
-                if ($tables = run('{{bin/wp}} db tables {{wp_tables_options}} --url={{single_url}}')) {
-                    set('db_export_options', parse('{{db_export_options}}') . " $tables");
-                }
-            } catch (\Exception $e) {
-                throw new Exception('Unable to find any database tables for URL {{single_url}}, are you sure it exists in this environment?');
+    if (has('single_url')) {
+        try {
+            if ($tables = run('{{bin/wp}} db tables {{wp_tables_options}} --url={{single_url}}')) {
+                set('db_export_options', parse('{{db_export_options}}') . " $tables");
             }
+        } catch (\Exception $e) {
+            throw new Exception(sprintf('Unable to find any database tables for URL %s, are you sure it exists in this environment?', get('single_url')));
         }
+    }
 
-        writeln('✈︎ Backing up database on <fg=cyan;options=bold>{{hostname}}</> to: <fg=green;options=bold>{{result_file}}</>');
+    writeln('✈︎ Backing up database on <fg=cyan;options=bold>{{hostname}}</> to: <fg=green;options=bold>{{result_file}}</>');
 
-        run('{{db_export_command}} | gzip > {{result_file}}');
+    run('{{db_export_command}} | gzip > {{result_file}}');
 
-        if (!test('[ -s {{result_file}} ]')) {
-            throw new Exception('Database Backup Failed');
-        }
-    });
+    if (!test('[ -s {{result_file}} ]')) {
+        throw new Exception('Database Backup Failed');
+    }
 })
     ->desc('Makes a backup of the database');

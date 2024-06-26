@@ -27,12 +27,12 @@ set('bin/drush', function () {
  * Run drush deploy task
  */
 task('drush:postdeploy', function () {
-    within('{{release_or_current_path}}', function () {
-        /**
-         * Setting `no_throw` so we don't get a sudo password prompt if the command fails
-         */
-        run('sudo -u {{ http_group }} {{bin/drush}} deploy -v -y', ['real_time_output' => true, 'no_throw' => true]);
-    });
+    cd('{{release_or_current_path}}');
+
+    /**
+     * Setting `no_throw` so we don't get a sudo password prompt if the command fails
+     */
+    run('sudo -u {{ http_group }} {{bin/drush}} deploy -v -y', ['real_time_output' => true, 'no_throw' => true]);
 })
     ->desc('Clear Drupal cache, etc');
 

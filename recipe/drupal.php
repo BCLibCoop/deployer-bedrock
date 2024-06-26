@@ -16,17 +16,23 @@ namespace Deployer;
 require_once __DIR__ . '/bclc-base.php';
 
 /**
+ * Declare recipe early so it can be checked for is tasks
+ */
+add('recipes', ['drupal']);
+
+/**
  * Require tasks
  */
-require_once __DIR__ . '/tasks/db-drupal.php';
 require_once __DIR__ . '/tasks/drush.php';
-
-add('recipes', ['drupal']);
+require_once __DIR__ . '/tasks/db.php';
 
 /**
  * Default drupal site, for syncing content
  */
 set('drupal_site', 'default');
+
+set('db_export_command', '{{bin/drush}} sql-dump --extra="{{db_export_options}}"');
+set('db_import_command', '{{bin/drush}} sql-cli');
 
 /**
  * Shared files/dirs between deploys
@@ -36,7 +42,6 @@ set('shared_files', [
     'web/.user.ini',
 ]);
 set('shared_dirs', [
-    'config/backup',
     'web/sites/{{drupal_site}}/files',
 ]);
 

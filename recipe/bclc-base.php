@@ -40,6 +40,7 @@ set('keep_releases', 3);
 set('url', '{{application}}.com');
 set('local_url', '{{application}}.test');
 set('deploy_path', '/var/www/{{url}}');
+set('backup_path', '{{deploy_path}}/backup');
 
 /**
  * Writeable Dirs Settings

@@ -16,17 +16,25 @@ namespace Deployer;
 require_once __DIR__ . '/bclc-base.php';
 
 /**
+ * Declare recipe early so it can be checked for is tasks
+ */
+add('recipes', ['bedrock']);
+
+/**
  * Require tasks
  */
-require_once __DIR__ . '/tasks/db-wordpress.php';
 require_once __DIR__ . '/tasks/wp-cli.php';
-
-add('recipes', ['bedrock']);
+require_once __DIR__ . '/tasks/db.php';
 
 /**
  * WordPress content directory, defaults to `app` for Bedrock
  */
 set('wp_content_dir', 'app');
+
+set('db_export_command', '{{bin/wp}} db export {{db_export_options}} -');
+set('db_import_command', '{{bin/wp}} db import -');
+set('wp_replace_options', '--skip-plugins --skip-themes --skip-columns=guid --all-tables-with-prefix');
+set('wp_tables_options', '--skip-plugins --skip-themes --all-tables-with-prefix --scope=blog --format=csv');
 
 /**
  * Shared files/dirs between deploys
@@ -38,7 +46,6 @@ set('shared_files', [
     'config/application.local.php',
 ]);
 set('shared_dirs', [
-    'config/backup',
     'web/{{wp_content_dir}}/uploads',
     'web/{{wp_content_dir}}/fonts',
 ]);

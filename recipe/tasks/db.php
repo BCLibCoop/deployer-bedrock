@@ -29,12 +29,7 @@ if (in_array('bedrock-multisite', get('recipes'))) {
 }
 
 task('db:push', function () {
-    /**
-     * Get the environment we're targeting
-     */
-    set('environment', get('labels', ['env' => ''])['env']);
-
-    if (get('environment') === 'production' && !askConfirmation(sprintf('Are you sure you want to push the database to the %s environment?', get('environment')))) {
+    if (in_array(get('environment'), get('protected_environments')) && !askConfirmation('Are you sure you want to push the database to the {{environment}} environment?')) {
         writeln('DB push aborted!');
         return;
     }
@@ -103,12 +98,7 @@ task('db:push', function () {
     ->desc('Pushes the database from local to remote env, replacing URLs as appropriate');
 
 task('db:pull', function () {
-    /**
-     * Get the environment we're targeting
-     */
-    set('environment', get('labels', ['env' => ''])['env']);
-
-    if (get('environment') === 'production' && !askConfirmation(sprintf('Are you sure you want to pull the database from the %s environment?', get('environment')))) {
+    if (in_array(get('environment'), get('protected_environments')) && !askConfirmation('Are you sure you want to pull the database from the {{environment}} environment?')) {
         writeln('DB pull aborted!');
         return;
     }
@@ -176,12 +166,7 @@ task('db:pull', function () {
     ->desc('Pulls the database from remote env to local, replacing URLs as appropriate');
 
 task('db:backup', function () {
-    /**
-     * Get the environment we're targeting
-     */
-    set('environment', get('labels', ['env' => ''])['env']);
-
-    if (get('environment') === 'production' && !askConfirmation(sprintf('Are you sure you want to backup the database in the %s environment?', get('environment')))) {
+    if (in_array(get('environment'), get('protected_environments')) && !askConfirmation('Are you sure you want to backup the database in the {{environment}} environment?')) {
         writeln('DB backup aborted!');
         return;
     }

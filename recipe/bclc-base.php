@@ -25,6 +25,16 @@ require_once __DIR__ . '/tasks/uploads.php';
 add('recipes', ['bclc-base']);
 
 /**
+ * Get the environment we're targeting
+ */
+set('environment', fn() => get('labels', ['env' => ''])['env']);
+
+/**
+ * Set protected environments for DB actions
+ */
+set('protected_environments', ['production']);
+
+/**
  * Set "application" name to base dir name
  */
 set('application', basename(dirname(\DEPLOYER_DEPLOY_FILE)));

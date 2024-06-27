@@ -13,9 +13,15 @@ namespace Deployer;
 use Deployer\Exception\Exception;
 use Symfony\Component\Console\Input\InputOption;
 
+option('skip-import', null, null, 'For database tasks, only pushes or pulls the database, does not import');
+
 set('db_export_options', '--single-transaction --skip-lock-tables');
 
-option('skip-import', null, null, 'For database tasks, only pushes or pulls the database, does not import');
+set('hash', substr(md5(mt_rand()), 0, 7));
+set('date', date('Y-m-d\TH-i-s'));
+set('url_slug', '');
+set('result_file', '{{application}}-{{environment}}{{url_slug}}-{{date}}-{{hash}}.sql.gz');
+set('remote_result_file', '{{backup_path}}/{{result_file}}');
 
 /**
  * These options only apply to WordPress imports/exports
@@ -33,10 +39,6 @@ task('db:push', function () {
         writeln('DB push aborted!');
         return;
     }
-
-    $hash = substr(md5(mt_rand()), 0, 7);
-    set('result_file', sprintf('{{application}}-{{environment}}-%s-%s.sql.gz', date('Y-m-d\TH-i-s'), $hash));
-    set('remote_result_file', '{{backup_path}}/{{result_file}}');
 
     writeln('✈︎ Pushing local database to <fg=cyan>{{hostname}}</fg=cyan>');
 
@@ -102,10 +104,6 @@ task('db:pull', function () {
         writeln('DB pull aborted!');
         return;
     }
-
-    $hash = substr(md5(mt_rand()), 0, 7);
-    set('result_file', sprintf('{{application}}-{{environment}}-%s-%s.sql.gz', date('Y-m-d\TH-i-s'), $hash));
-    set('remote_result_file', '{{backup_path}}/{{result_file}}');
 
     writeln('✈︎ Pulling database from <fg=cyan>{{hostname}}</fg=cyan>');
 
@@ -178,13 +176,11 @@ task('db:backup', function () {
      */
     run('[ -d {{backup_path}} ] || mkdir {{backup_path}}');
 
-    $url_slug = null;
-
     if (in_array('bedrock-multisite', get('recipes'))) {
         if ($url = input()->getOption('url')) {
             try {
                 if ($tables = run("{{bin/wp}} db tables {{wp_tables_options}} --url=$url")) {
-                    $url_slug = '-' . preg_replace('/[^A-Za-z0-9-]+/', '_', $url);
+                    set('url_slug', '-' . preg_replace('/[^A-Za-z0-9-]+/', '_', $url));
                     set('db_export_options', parse("{{db_export_options}} $tables"));
                 }
             } catch (\Exception $e) {
@@ -192,10 +188,6 @@ task('db:backup', function () {
             }
         }
     }
-
-    $hash = substr(md5(mt_rand()), 0, 7);
-    set('result_file', sprintf('{{application}}-{{environment}}%s-%s-%s.sql.gz', $url_slug, date('Y-m-d\TH-i-s'), $hash));
-    set('remote_result_file', '{{backup_path}}/{{result_file}}');
 
     writeln('✈︎ Backing up database on <fg=cyan;options=bold>{{hostname}}</> to: <fg=green;options=bold>{{remote_result_file}}</>');
 

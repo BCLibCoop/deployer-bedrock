@@ -22,6 +22,9 @@ option('skip-import', null, null, 'For database tasks, only pushes or pulls the 
  */
 if (in_array('bedrock', get('recipes'))) {
     option('full-replace', null, null, 'For database tasks, replace all URLs, not just blog/site/options tables');
+}
+
+if (in_array('bedrock-multisite', get('recipes'))) {
     option('url', null, InputOption::VALUE_REQUIRED, 'For database backup tasks, single site URL to back up');
 }
 
@@ -36,7 +39,7 @@ task('db:push', function () {
         return;
     }
 
-    $hash        = substr(md5(mt_rand()), 0, 7);
+    $hash = substr(md5(mt_rand()), 0, 7);
     set('result_file', sprintf('{{application}}-{{environment}}-%s-%s.sql.gz', date('Y-m-d\TH-i-s'), $hash));
     set('remote_result_file', '{{backup_path}}/{{result_file}}');
 
@@ -190,40 +193,30 @@ task('db:backup', function () {
      */
     run('[ -d {{backup_path}} ] || mkdir {{backup_path}}');
 
-    $url = '';
-    if (in_array('bedrock', get('recipes'))) {
-        $url = input()->getOption('url');
+    $url_slug = null;
 
-        if (!empty($url)) {
-            set('single_url', $url);
-        }
-    }
-
-    set(
-        'result_file',
-        sprintf(
-            '{{backup_path}}/{{application}}-{{environment}}%s-%s-%s.sql.gz',
-            $url ? '-' . preg_replace('/[^A-Za-z0-9-]+/', '_', $url) : null,
-            date('Y-m-d\TH-i-s'),
-            substr(md5(mt_rand()), 0, 7)
-        )
-    );
-
-    if (has('single_url')) {
-        try {
-            if ($tables = run('{{bin/wp}} db tables {{wp_tables_options}} --url={{single_url}}')) {
-                set('db_export_options', parse('{{db_export_options}}') . " $tables");
+    if (in_array('bedrock-multisite', get('recipes'))) {
+        if ($url = input()->getOption('url')) {
+            try {
+                if ($tables = run("{{bin/wp}} db tables {{wp_tables_options}} --url=$url")) {
+                    $url_slug = '-' . preg_replace('/[^A-Za-z0-9-]+/', '_', $url);
+                    set('db_export_options', parse("{{db_export_options}} $tables"));
+                }
+            } catch (\Exception $e) {
+                throw new Exception("Unable to find any database tables for URL $url, are you sure it exists in this environment?");
             }
-        } catch (\Exception $e) {
-            throw new Exception(sprintf('Unable to find any database tables for URL %s, are you sure it exists in this environment?', get('single_url')));
         }
     }
 
-    writeln('✈︎ Backing up database on <fg=cyan;options=bold>{{hostname}}</> to: <fg=green;options=bold>{{result_file}}</>');
+    $hash = substr(md5(mt_rand()), 0, 7);
+    set('result_file', sprintf('{{application}}-{{environment}}%s-%s-%s.sql.gz', $url_slug, date('Y-m-d\TH-i-s'), $hash));
+    set('remote_result_file', '{{backup_path}}/{{result_file}}');
 
-    run('{{db_export_command}} | gzip > {{result_file}}');
+    writeln('✈︎ Backing up database on <fg=cyan;options=bold>{{hostname}}</> to: <fg=green;options=bold>{{remote_result_file}}</>');
 
-    if (!test('[ -s {{result_file}} ]')) {
+    run('{{db_export_command}} | gzip > {{remote_result_file}}');
+
+    if (!test('[ -s {{remote_result_file}} ]')) {
         throw new Exception('Database Backup Failed');
     }
 })

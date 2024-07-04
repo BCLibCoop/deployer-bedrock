@@ -15,13 +15,18 @@ use Symfony\Component\Console\Input\InputOption;
 
 option('skip-import', null, null, 'For database tasks, only pushes or pulls the database, does not import');
 
+// TODO: Implement backup before push/pull
+// option('skip-backup', null, null, 'For database tasks, skip the backup that should occur before push/pull');
+
 set('db_export_options', '--single-transaction --skip-lock-tables');
 
 set('hash', substr(md5(mt_rand()), 0, 7));
 set('date', date('Y-m-d\TH-i-s'));
 set('url_slug', '');
-set('result_file', '{{application}}-{{environment}}{{url_slug}}-{{date}}-{{hash}}.sql.gz');
-set('remote_result_file', '{{backup_path}}/{{result_file}}');
+set('db_environment', '{{environment}}');
+set('result_file', '{{application}}-{{db_environment}}{{url_slug}}-{{date}}-{{hash}}.sql.gz');
+set('local_result_file', '{{backup_path}}/{{result_file}}');
+set('remote_result_file', '{{remote_backup_path}}/{{result_file}}');
 
 /**
  * These options only apply to WordPress imports/exports
@@ -42,24 +47,38 @@ task('db:push', function () {
 
     writeln('✈︎ Pushing local database to <fg=cyan>{{hostname}}</fg=cyan>');
 
-    runLocally('{{db_export_command}} | gzip > {{result_file}}');
-
-    if (!testLocally('[ -s {{result_file}} ]')) {
-        throw new Exception('Database Export Failed');
-    }
+    // Override the db_environment to indicate it's the localhost's environment we're exporting
+    set('db_environment', host('localhost')->getLabels()['env']);
 
     /**
-     * Ensure backup directory exists
+     * Use this `on` closure instead of `runLocally()` so we resolve the local
+     * PHP version correctly
      */
-    run('[ -d {{backup_path}} ] || mkdir {{backup_path}}');
+    on(host('localhost'), function () {
+        /**
+         * Ensure local backup directory exists
+         */
+        run('[ -d {{backup_path}} ] || mkdir {{backup_path}}');
 
-    upload('{{result_file}}', '{{remote_result_file}}');
+        run('{{pipefail}} {{db_export_command}} | gzip > {{local_result_file}}');
+
+        if (!test('[ -s {{local_result_file}} ]')) {
+            throw new Exception('Database Export Failed');
+        }
+    });
+
+    /**
+     * Ensure remote backup directory exists
+     */
+    run('[ -d {{remote_backup_path}} ] || mkdir {{remote_backup_path}}');
+
+    upload('{{local_result_file}}', '{{remote_result_file}}');
 
     if (!test('[ -s {{remote_result_file}} ]')) {
         throw new Exception('Database Export Upload Failed');
     }
 
-    runLocally('rm {{result_file}}');
+    runLocally('rm {{local_result_file}}');
 
     if (input()->getOption('skip-import')) {
         writeln('Skipping import. File is located at {{remote_result_file}}');
@@ -70,7 +89,7 @@ task('db:push', function () {
 
     cd('{{current_path}}');
 
-    run('gunzip -c {{remote_result_file}} | {{db_import_command}}');
+    run('{{pipefail}} gunzip -c {{remote_result_file}} | {{db_import_command}}');
     run('rm {{remote_result_file}}');
 
     /**
@@ -105,61 +124,80 @@ task('db:pull', function () {
         return;
     }
 
+    /**
+     * Ensure remote backup directory exists
+     */
+    run('[ -d {{remote_backup_path}} ] || mkdir {{remote_backup_path}}');
+
     writeln('✈︎ Pulling database from <fg=cyan>{{hostname}}</fg=cyan>');
 
     cd('{{current_path}}');
 
-    /**
-     * Ensure backup directory exists
-     */
-    run('[ -d {{backup_path}} ] || mkdir {{backup_path}}');
-
-    run('{{db_export_command}} | gzip > {{remote_result_file}}');
+    run('{{pipefail}} {{db_export_command}} | gzip > {{remote_result_file}}');
 
     if (!test('[ -s {{remote_result_file}} ]')) {
         throw new Exception('Database Export Failed');
     }
 
-    download('{{remote_result_file}}', '{{result_file}}');
+    /**
+     * Ensure local backup directory exists
+     */
+    runLocally('[ -d {{backup_path}} ] || mkdir {{backup_path}}');
 
-    if (!testLocally('[ -s {{result_file}} ]')) {
+    download('{{remote_result_file}}', '{{local_result_file}}');
+
+    if (!testLocally('[ -s {{local_result_file}} ]')) {
         throw new Exception('Database Export Download Failed');
     }
 
     run('rm {{remote_result_file}}');
 
     if (input()->getOption('skip-import')) {
-        writeln('Skipping import, file is located at {{result_file}}');
+        writeln('Skipping import, file is located at {{local_result_file}}');
         return;
     }
 
+    /**
+     * Export the current db_env so we can reference it correctly when running
+     * commands on localhost
+     */
+    $db_env = get('db_environment');
+
     writeln('Importing database');
-    runLocally('gunzip -c {{result_file}} | {{db_import_command}}');
-    runLocally('rm {{result_file}}');
 
     /**
-     * Gating this to the specific recipe as it sets the variables we need
+     * Use this `on` closure instead of `runLocally()` so we resolve the local
+     * PHP version correctly
      */
-    if (in_array('bedrock-multisite', get('recipes'))) {
-        writeLn('Replacing base URLs in multi-site database');
+    on(host('localhost'), function () use ($db_env) {
+        set('db_environment', $db_env);
+        run('{{pipefail}} gunzip -c {{local_result_file}} | {{db_import_command}}');
+        run('rm {{local_result_file}}');
 
-        runLocally("{{bin/wp}} search-replace 'https?://([\w\.]*\.){{base_url}}' 'http://$1{{local_base_url}}' "
-            . "'wp_*options' --url={{url}} --skip-plugins --skip-themes --network --regex --regex-delimiter='%' ");
-        runLocally("{{bin/wp}} search-replace '{{base_url}}' '{{local_base_url}}' wp_blogs wp_site "
-            . "--url={{url}} --network --skip-plugins --skip-themes");
+        /**
+         * Gating this to the specific recipe as it sets the variables we need
+         */
+        if (in_array('bedrock-multisite', get('recipes'))) {
+            writeLn('Replacing base URLs in multi-site database');
 
-        if (input()->getOption('full-replace')) {
-            info("--full-replace not fully implemented. Main URL will be changed, but not sub-sites.");
-            runLocally("{{bin/wp}} search-replace 'https://{{url}}' 'http://{{local_url}}' "
-                . "--url={{url}} --network {{wp_replace_options}}");
+            run("{{bin/wp}} search-replace 'https?://([\w\.]*\.){{base_url}}' 'http://$1{{local_base_url}}' "
+                . "'wp_*options' --url={{url}} --skip-plugins --skip-themes --network --regex --regex-delimiter='%' ");
+            run("{{bin/wp}} search-replace '{{base_url}}' '{{local_base_url}}' wp_blogs wp_site "
+                . "--url={{url}} --network --skip-plugins --skip-themes");
+
+            if (input()->getOption('full-replace')) {
+                info("--full-replace not fully implemented. Main URL will be changed, but not sub-sites.");
+                run("{{bin/wp}} search-replace 'https://{{url}}' 'http://{{local_url}}' "
+                    . "--url={{url}} --network {{wp_replace_options}}");
+            }
+        } elseif (in_array('bedrock', get('recipes'))) {
+            writeLn('Replacing URLs in database');
+
+            // Do http and https when pulling to local
+            run("{{bin/wp}} search-replace 'http://{{url}}' 'http://{{local_url}}' {{wp_replace_options}}");
+            run("{{bin/wp}} search-replace 'https://{{url}}' 'http://{{local_url}}' {{wp_replace_options}}");
         }
-    } elseif (in_array('bedrock', get('recipes'))) {
-        writeLn('Replacing URLs in database');
-
-        // Do http and https when pulling to local
-        runLocally("{{bin/wp}} search-replace 'http://{{url}}' 'http://{{local_url}}' {{wp_replace_options}}");
-        runLocally("{{bin/wp}} search-replace 'https://{{url}}' 'http://{{local_url}}' {{wp_replace_options}}");
-    }
+    });
 })
     ->desc('Pulls the database from remote env to local, replacing URLs as appropriate');
 
@@ -169,12 +207,12 @@ task('db:backup', function () {
         return;
     }
 
-    cd('{{current_path}}');
-
     /**
      * Ensure backup directory exists
      */
-    run('[ -d {{backup_path}} ] || mkdir {{backup_path}}');
+    run('[ -d {{remote_backup_path}} ] || mkdir {{remote_backup_path}}');
+
+    cd('{{current_path}}');
 
     if (in_array('bedrock-multisite', get('recipes'))) {
         if ($url = input()->getOption('url')) {
@@ -191,7 +229,7 @@ task('db:backup', function () {
 
     writeln('✈︎ Backing up database on <fg=cyan;options=bold>{{hostname}}</> to: <fg=green;options=bold>{{remote_result_file}}</>');
 
-    run('{{db_export_command}} | gzip > {{remote_result_file}}');
+    run('{{pipefail}} {{db_export_command}} | gzip > {{remote_result_file}}');
 
     if (!test('[ -s {{remote_result_file}} ]')) {
         throw new Exception('Database Backup Failed');

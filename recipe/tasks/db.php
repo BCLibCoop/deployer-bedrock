@@ -89,7 +89,7 @@ task('db:push', function () {
 
     cd('{{current_path}}');
 
-    run('{{pipefail}} gunzip -c {{remote_result_file}} | {{db_import_command}}');
+    run('{{pipefail}} gunzip -c {{remote_result_file}} | {{mariadb_fix}} {{db_import_command}}');
     run('rm {{remote_result_file}}');
 
     /**
@@ -171,7 +171,7 @@ task('db:pull', function () {
      */
     on(host('localhost'), function () use ($db_env) {
         set('db_environment', $db_env);
-        run('{{pipefail}} gunzip -c {{local_result_file}} | {{db_import_command}}');
+        run('{{pipefail}} gunzip -c {{local_result_file}} | {{mariadb_fix}} {{db_import_command}}');
         run('rm {{local_result_file}}');
 
         /**

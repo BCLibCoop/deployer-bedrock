@@ -59,6 +59,14 @@ set('backup_path', 'backup');
 set('remote_backup_path', '{{deploy_path}}/{{backup_path}}');
 
 /**
+ * Recent MariaDB dump versions add a "sandbox mode" comment that is not
+ * backwards compatible. This command will trim that comment from the first
+ * line on import. Will strip other comments from unaffected versions, but
+ * I don't believe they're read on import
+ */
+set('mariadb_fix', 'tail -n +2 |');
+
+/**
  * Writeable Dirs Settings
  */
 set('writable_mode', 'chown');

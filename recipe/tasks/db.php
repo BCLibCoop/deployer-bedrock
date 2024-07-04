@@ -158,10 +158,12 @@ task('db:pull', function () {
     }
 
     /**
-     * Export the current db_env so we can reference it correctly when running
-     * commands on localhost
+     * Export env and URL of the current host. I haven't found a cleaner way to
+     * either reference these inside of the below localhost closure, or
+     * conversely to re-evaluate the PHP/WP-CLI binary location for localhost
      */
     $db_env = get('db_environment');
+    $url = get('url');
 
     writeln('Importing database');
 
@@ -169,8 +171,14 @@ task('db:pull', function () {
      * Use this `on` closure instead of `runLocally()` so we resolve the local
      * PHP version correctly
      */
-    on(host('localhost'), function () use ($db_env) {
+    on(host('localhost'), function () use ($db_env, $url) {
+        /**
+         * Set these vars correctly in the localhost context based on the env
+         * that we were called for
+         */
         set('db_environment', $db_env);
+        set('url', $url);
+
         run('{{pipefail}} gunzip -c {{local_result_file}} | {{mariadb_fix}} {{db_import_command}}');
         run('rm {{local_result_file}}');
 

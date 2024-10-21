@@ -104,16 +104,17 @@ task('db:push:replace', function () {
     if (in_array('bedrock-multisite', get('recipes'))) {
         writeLn('Replacing base URLs in multi-site database');
 
-        run("{{bin/wp}} search-replace 'https?://([\w\.]*\.){{local_base_url}}' 'http://$1{{base_url}}' 'wp_*options' "
-            . "--url={{local_url}} --network  --skip-plugins --skip-themes --regex --regex-delimiter='%'");
-        run("{{bin/wp}} search-replace '{{local_base_url}}' '{{base_url}}' wp_blogs wp_site "
-            . "--url={{local_url}} --network --skip-plugins --skip-themes");
+        run("{{bin/wp}} search-replace 'https?://([\w\.]*\.){{local_base_url}}' 'https://$1{{base_url}}' 'wp_*options' "
+            . "{{wp_ms_replace_options}} --regex --regex-delimiter='%'");
+        run("{{bin/wp}} search-replace '{{local_base_url}}' '{{base_url}}' wp_blogs wp_site wp_sitemeta "
+            . "{{wp_ms_replace_options}}");
 
         if (input()->getOption('full-replace')) {
             // TODO: Get all blog URLs and loop through to change URLs? Probably faster than a regex.
             // TODO: Be more surgical about tables/columns to look at to speed up?
             info('--full-replace not fully implemented. Main URL will be changed, but not sub-sites.');
-            run("{{bin/wp}} search-replace 'http://{{local_url}}' 'http://{{url}}' --url={{local_url}} --network {{wp_replace_options}}");
+            run("{{bin/wp}} search-replace 'http://{{local_url}}' 'https://{{url}}' --url={{url}} --network "
+                . "{{wp_replace_options}}");
         }
     } elseif (in_array('bedrock', get('recipes'))) {
         writeLn('Replacing URLs in database');
@@ -215,14 +216,14 @@ task('db:pull:replace', function () {
             writeLn('Replacing base URLs in multi-site database');
 
             run("{{bin/wp}} search-replace 'https?://([\w\.]*\.){{base_url}}' 'http://$1{{local_base_url}}' "
-                . "'wp_*options' --url={{url}} --skip-plugins --skip-themes --network --regex --regex-delimiter='%' ");
-            run("{{bin/wp}} search-replace '{{base_url}}' '{{local_base_url}}' wp_blogs wp_site "
-                . "--url={{url}} --network --skip-plugins --skip-themes");
+                . "'wp_*options' {{wp_ms_replace_options}} --regex --regex-delimiter='%'");
+            run("{{bin/wp}} search-replace '{{base_url}}' '{{local_base_url}}' wp_blogs wp_site wp_sitemeta "
+                . "{{wp_ms_replace_options}}");
 
             if (input()->getOption('full-replace')) {
                 info("--full-replace not fully implemented. Main URL will be changed, but not sub-sites.");
                 run("{{bin/wp}} search-replace 'https://{{url}}' 'http://{{local_url}}' "
-                    . "--url={{url}} --network {{wp_replace_options}}");
+                    . "--url={{local_url}} --network {{wp_replace_options}}");
             }
         } elseif (in_array('bedrock', get('recipes'))) {
             writeLn('Replacing URLs in database');

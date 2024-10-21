@@ -34,6 +34,7 @@ set('wp_content_dir', 'app');
 set('db_export_command', '{{bin/wp}} db export {{db_export_options}} -');
 set('db_import_command', '{{bin/wp}} db import -');
 set('wp_replace_options', '--skip-plugins --skip-themes --skip-columns=guid --all-tables-with-prefix --report-changed-only');
+set('wp_ms_replace_options', '--all-tables  --skip-plugins --skip-themes --no-recurse-objects --report-changed-only');
 set('wp_tables_options', '--skip-plugins --skip-themes --all-tables-with-prefix --scope=blog --format=csv');
 
 /**

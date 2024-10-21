@@ -91,6 +91,12 @@ task('db:push', function () {
 
     run('{{pipefail}} gunzip -c {{remote_result_file}} | {{mariadb_fix}} {{db_import_command}}', ['timeout' => null]);
     run('rm {{remote_result_file}}');
+})
+    ->addAfter('db:push:replace')
+    ->desc('Pushes the database from local to remote env');
+
+task('db:push:replace', function () {
+    cd('{{current_path}}');
 
     /**
      * Gating this to the specific recipe as it sets the variables we need
@@ -116,7 +122,7 @@ task('db:push', function () {
         run("{{bin/wp}} search-replace 'http://{{local_url}}' 'https://{{url}}' {{wp_replace_options}}");
     }
 })
-    ->desc('Pushes the database from local to remote env, replacing URLs as appropriate');
+    ->desc('Replaces local URLs with remote URLs as appropriate');
 
 task('db:pull', function () {
     if (in_array(get('environment'), get('protected_environments')) && !askConfirmation('Are you sure you want to pull the database from the {{environment}} environment?')) {
@@ -181,7 +187,27 @@ task('db:pull', function () {
 
         run('{{pipefail}} gunzip -c {{local_result_file}} | {{mariadb_fix}} {{db_import_command}}', ['timeout' => null]);
         run('rm {{local_result_file}}');
+    });
+})
+    ->addAfter('db:pull:replace')
+    ->desc('Pulls the database from remote env to local');
 
+task('db:pull:replace', function () {
+    /**
+     * Export env and URL of the current host. I haven't found a cleaner way to
+     * either reference these inside of the below localhost closure, or
+     * conversely to re-evaluate the PHP/WP-CLI binary location for localhost
+     */
+    $db_env = get('db_environment');
+    $url = get('url');
+
+    on(host('localhost'), function () use ($db_env, $url) {
+        /**
+         * Set these vars correctly in the localhost context based on the env
+         * that we were called for
+         */
+        set('db_environment', $db_env);
+        set('url', $url);
         /**
          * Gating this to the specific recipe as it sets the variables we need
          */
@@ -207,7 +233,7 @@ task('db:pull', function () {
         }
     });
 })
-    ->desc('Pulls the database from remote env to local, replacing URLs as appropriate');
+    ->desc('Replaces remote URLs with local URLs as appropriate');
 
 task('db:backup', function () {
     if (in_array(get('environment'), get('protected_environments')) && !askConfirmation('Are you sure you want to backup the database in the {{environment}} environment?')) {

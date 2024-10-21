@@ -201,14 +201,17 @@ task('db:pull:replace', function () {
      */
     $db_env = get('db_environment');
     $url = get('url');
+    $base_url = get('base_url');
 
-    on(host('localhost'), function () use ($db_env, $url) {
+    on(host('localhost'), function () use ($db_env, $url, $base_url) {
         /**
          * Set these vars correctly in the localhost context based on the env
          * that we were called for
          */
         set('db_environment', $db_env);
         set('url', $url);
+        set('base_url', $base_url);
+
         /**
          * Gating this to the specific recipe as it sets the variables we need
          */
@@ -221,6 +224,8 @@ task('db:pull:replace', function () {
                 . "{{wp_ms_replace_options}}");
 
             if (input()->getOption('full-replace')) {
+                // TODO: Get all blog URLs and loop through to change URLs? Probably faster than a regex.
+                // TODO: Be more surgical about tables/columns to look at to speed up?
                 info("--full-replace not fully implemented. Main URL will be changed, but not sub-sites.");
                 run("{{bin/wp}} search-replace 'https://{{url}}' 'http://{{local_url}}' "
                     . "--url={{local_url}} --network {{wp_replace_options}}");

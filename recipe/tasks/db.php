@@ -60,7 +60,7 @@ task('db:push', function () {
          */
         run('[ -d {{backup_path}} ] || mkdir {{backup_path}}');
 
-        run('{{pipefail}} {{db_export_command}} | gzip > {{local_result_file}}');
+        run('{{pipefail}} {{db_export_command}} | gzip > {{local_result_file}}', ['timeout' => null]);
 
         if (!test('[ -s {{local_result_file}} ]')) {
             throw new Exception('Database Export Failed');
@@ -89,7 +89,7 @@ task('db:push', function () {
 
     cd('{{current_path}}');
 
-    run('{{pipefail}} gunzip -c {{remote_result_file}} | {{mariadb_fix}} {{db_import_command}}');
+    run('{{pipefail}} gunzip -c {{remote_result_file}} | {{mariadb_fix}} {{db_import_command}}', ['timeout' => null]);
     run('rm {{remote_result_file}}');
 
     /**
@@ -133,7 +133,7 @@ task('db:pull', function () {
 
     cd('{{current_path}}');
 
-    run('{{pipefail}} {{db_export_command}} | gzip > {{remote_result_file}}');
+    run('{{pipefail}} {{db_export_command}} | gzip > {{remote_result_file}}', ['timeout' => null]);
 
     if (!test('[ -s {{remote_result_file}} ]')) {
         throw new Exception('Database Export Failed');
@@ -179,7 +179,7 @@ task('db:pull', function () {
         set('db_environment', $db_env);
         set('url', $url);
 
-        run('{{pipefail}} gunzip -c {{local_result_file}} | {{mariadb_fix}} {{db_import_command}}');
+        run('{{pipefail}} gunzip -c {{local_result_file}} | {{mariadb_fix}} {{db_import_command}}', ['timeout' => null]);
         run('rm {{local_result_file}}');
 
         /**
@@ -237,7 +237,7 @@ task('db:backup', function () {
 
     writeln('✈︎ Backing up database on <fg=cyan;options=bold>{{hostname}}</> to: <fg=green;options=bold>{{remote_result_file}}</>');
 
-    run('{{pipefail}} {{db_export_command}} | gzip > {{remote_result_file}}');
+    run('{{pipefail}} {{db_export_command}} | gzip > {{remote_result_file}}', ['timeout' => null]);
 
     if (!test('[ -s {{remote_result_file}} ]')) {
         throw new Exception('Database Backup Failed');

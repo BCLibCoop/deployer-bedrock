@@ -13,9 +13,9 @@
 
 namespace Deployer;
 
-require_once __DIR__ . '/bedrock.php';
-
 add('recipes', ['bedrock-multisite']);
+
+require_once __DIR__ . '/bedrock.php';
 
 /**
  * Configure "base" subdomain URL structure

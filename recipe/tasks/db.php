@@ -255,7 +255,7 @@ task('db:backup', function () {
     cd('{{current_path}}');
 
     if (in_array('bedrock-multisite', get('recipes'))) {
-        if ($url = input()->getOption('url')) {
+        if (input()->hasOption('url') && $url = input()->getOption('url')) {
             try {
                 if ($tables = run("{{bin/wp}} db tables {{wp_tables_options}} --url=$url")) {
                     set('url_slug', '-' . preg_replace('/[^A-Za-z0-9-]+/', '_', $url));

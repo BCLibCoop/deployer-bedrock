@@ -259,7 +259,7 @@ task('db:backup', function () {
             try {
                 if ($tables = run("{{bin/wp}} db tables {{wp_tables_options}} --url=$url")) {
                     set('url_slug', '-' . preg_replace('/[^A-Za-z0-9-]+/', '_', $url));
-                    set('db_export_options', parse("{{db_export_options}} $tables"));
+                    set('db_export_options', parse("{{db_export_options}} --tables=$tables"));
                 }
             } catch (\Exception $e) {
                 throw new Exception("Unable to find any database tables for URL $url, are you sure it exists in this environment?");

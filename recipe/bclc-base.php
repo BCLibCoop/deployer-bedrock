@@ -76,6 +76,11 @@ set('http_user', 'www-data:www-data');
 set('http_group', 'www-data');
 
 /**
+ * Add copy_dirs task
+ */
+before('deploy:shared', 'deploy:copy_dirs');
+
+/**
  * Add default localhost
  */
 localhost()

@@ -38,17 +38,23 @@ set('wp_ms_replace_options', '--all-tables  --skip-plugins --skip-themes --no-re
 set('wp_tables_options', '--skip-plugins --skip-themes --all-tables-with-prefix --scope=blog --format=csv');
 
 /**
+ * Copy some dirs to speed things up
+ */
+set('copy_dirs', [
+    'vendor', // Composer dir, faster to copy and update than start from scratch
+    'web/{{wp_content_dir}}/languages', // WP languages dir
+]);
+
+/**
  * Shared files/dirs between deploys
  */
 set('shared_files', [
     '.env',
     'web/.htaccess',
     'web/.user.ini',
-    'config/application.local.php',
 ]);
 set('shared_dirs', [
     'web/{{wp_content_dir}}/uploads',
-    'web/{{wp_content_dir}}/fonts',
 ]);
 
 /**
@@ -56,7 +62,6 @@ set('shared_dirs', [
  */
 set('writable_dirs', [
     'web/{{wp_content_dir}}/uploads',
-    'web/{{wp_content_dir}}/fonts',
 ]);
 
 /**

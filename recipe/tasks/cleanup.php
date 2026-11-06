@@ -7,7 +7,7 @@
  * which we don't want or need them
  *
  * @author            Sam Edwards <sam.edwards@bc.libraries.coop>
- * @copyright         2024 BC Libraries Cooperative
+ * @copyright         2026 BC Libraries Cooperative
  * @license           MIT
  */
 

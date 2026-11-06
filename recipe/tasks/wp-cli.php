@@ -94,11 +94,11 @@ task('wpcli:update_db', function () {
 
         if ($is_multisite && !input()->getOption('update-db')) {
             writeln('<comment>Databse update can be time intensive on multisite, pass `--update-db` to really do it</comment>');
-            run('{{bin/wp}} core update-db --dry-run', ['real_time_output' => true]);
+            run('{{bin/wp}} core update-db --dry-run', forceOutput: true);
             return;
         }
 
-        run('{{bin/wp}} core update-db' . ($is_multisite ? ' --network' : ''), ['real_time_output' => true]);
+        run('{{bin/wp}} core update-db' . ($is_multisite ? ' --network' : ''), forceOutput: true);
     } catch (\Throwable $t) {
         writeln('<error>WordPress database could not be updated. '
             . 'Run manually via wp-admin/upgrade.php if necessary.</error>');

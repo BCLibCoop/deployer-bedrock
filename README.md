@@ -4,6 +4,8 @@ A (fairly opinionated) [Deployer](https://deployer.org) recpie to deploy a [Bedr
 
 Inspired by [capistrano-wpcli](https://github.com/lavmeiker/capistrano-wpcli)
 
+Requires Deployer 8.x and PHP >= 8.3
+
 ## Usage
 
 Include the following in your `deployer.php` file

@@ -115,12 +115,15 @@ task('db:push:replace', function () {
             info('--full-replace not fully implemented. Main URL will be changed, but not sub-sites.');
             run("{{bin/wp}} search-replace 'http://{{local_url}}' 'https://{{url}}' --url={{url}} --network "
                 . "{{wp_replace_options}}");
+            run("{{bin/wp}} search-replace 'https://{{local_url}}' 'https://{{url}}' --url={{url}} --network "
+                . "{{wp_replace_options}}");
         }
     } elseif (in_array('bedrock', get('recipes'))) {
         writeLn('Replacing URLs in database');
 
-        // Assume https for prod
+        // Catch http and https URLs just in case
         run("{{bin/wp}} search-replace 'http://{{local_url}}' 'https://{{url}}' {{wp_replace_options}}");
+        run("{{bin/wp}} search-replace 'https://{{local_url}}' 'https://{{url}}' {{wp_replace_options}}");
     }
 })
     ->desc('Replaces local URLs with remote URLs as appropriate');
